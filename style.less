@@ -24,18 +24,22 @@
     /* search result */
     .elastic-result {
         &:not(:first-of-type) {
-            @media(max-width: 576px) {
-                border-top: 2px solid @ini_background_alt;
+            @media(max-width: 768px) {
+                border-top: 1px solid @ini_background_alt;
                 padding-top: 20px;
             }
+            padding-top: 10px;
         }
-        @media(min-width: 576px){
+        @media(min-width: 768px){
             padding-left: 50px;
         }
     }
     .elastic-footnote {
         font-size: small;
         color: @ini_text_alt;
+        @media(min-width: 768px){
+            padding-left: 50px;
+        }
     }
 
     form .search-form {
