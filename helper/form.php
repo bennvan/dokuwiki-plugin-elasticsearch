@@ -54,6 +54,12 @@ class helper_plugin_elasticsearch_form extends DokuWiki_Plugin
         foreach ($aggregations as $term => $aggregation) {
             // keep canonical 'ns' search parameter for namespaces
             $param = $term === 'namespace' ? 'ns' : $term;
+            foreach($aggregation['buckets'] as $idx => $bucket) {
+                $ns = $bucket['key'];
+                if (auth_quickaclcheck($ns.':xxx') < AUTH_READ) {
+                    unset($aggregation['buckets'][$idx]);
+                }  
+            }
             $this->addCheckboxSelector($searchForm, $aggregation['buckets'], $param);
         }
         $this->addDateSelector($searchForm);

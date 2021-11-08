@@ -323,6 +323,9 @@ class action_plugin_elasticsearch_search extends DokuWiki_Action_Plugin {
         global $USERINFO;
         global $conf;
 
+        // If regex acl is used, we must rely on ACL when results are displayed. 
+        if (plugin_load('action', 'aclplusregex')) return;
+
         $groups = array_merge(['ALL'], $USERINFO['grps'] ?: []);
 
         // no ACL filters for superusers
@@ -363,6 +366,28 @@ class action_plugin_elasticsearch_search extends DokuWiki_Action_Plugin {
         }
     }
 
+
+    /**
+     * Returns ids that should be removed from first query results
+     */
+    protected function getBadIds($results) {
+
+        $found = $results->getTotalHits();
+        // fill an array to test if we should display search results, if the page exists and permissions allow.
+        if ($found) {
+            $bad_ids = [];
+            foreach($results as $row) {
+                /** @var Elastica\Result $row */
+                $page = $row->getSource()['uri'];
+                if(!page_exists($page) || isHiddenPage($page) || auth_quickaclcheck($page) < AUTH_READ){
+                    $bad_ids[] = $row->getId();
+                    continue;
+                }
+            }           
+        }
+        return $bad_ids;
+    }
+
     /**
      * Prints the introduction text
      */
@@ -396,21 +421,27 @@ class action_plugin_elasticsearch_search extends DokuWiki_Action_Plugin {
     protected function print_results($results) {
         global $lang;
 
-        // output results
+        // output cleaned results
         $found = $results->getTotalHits();
 
         if(!$found) {
-            echo '<h2>' . $lang['nothingfound'] . '</h2>';
+            echo '<h4>' . $lang['nothingfound'] . '</h4>';
             return (bool)$found;
         }
 
         echo '<dl class="search_results">';
-        echo '<h2>' . sprintf($this->getLang('totalfound'), $found) . '</h2>';
-        foreach($results as $row) {
+        echo '<h4>' . sprintf($this->getLang('totalfound'), $found) . '</h4><hr></hr>';
 
+        $show_author = $this->getConf('showAuthor');
+        $rm_pages = false;
+        foreach($results as $row) {
             /** @var Elastica\Result $row */
+
             $page = $row->getSource()['uri'];
-            if(!page_exists($page) || isHiddenPage($page) || auth_quickaclcheck($page) < AUTH_READ) continue;
+            if(!page_exists($page) || isHiddenPage($page) || auth_quickaclcheck($page) < AUTH_READ){
+                $rm_pages = true;
+                continue;
+            }
 
             // get highlighted title
             $title = str_replace(
@@ -430,31 +461,36 @@ class action_plugin_elasticsearch_search extends DokuWiki_Action_Plugin {
             );
             if(!$snippet) $snippet = hsc($row->getSource()['abstract']); // always fall back to abstract
 
+            // Results
+            echo '<div class="elastic-result">';
+            echo '<dd class="meta elastic-resultmeta">';
+            if($row->getSource()['namespace']) {
+                echo '<span class="ns">' . str_replace(':', ' › ', hsc($row->getSource()['namespace'])) . '</span>';
+            }
+            echo '</dd>';
+
             echo '<dt>';
-            echo '<a href="'.wl($page).'" class="wikilink1" title="'.hsc($page).'">';
+            echo '<a href="'.wl($page).'" class="elastic-link" title="'.hsc($page).'">';
             echo $title;
             echo '</a>';
             echo '</dt>';
 
-            // meta
-            echo '<dd class="meta elastic-resultmeta">';
-            if($row->getSource()['namespace']) {
-                echo '<span class="ns">' . $this->getLang('ns') . ' ' . hsc($row->getSource()['namespace']) . '</span>';
-            }
-            if($row->getSource()['user']) {
-                echo ' <span class="author">' . $this->getLang('author') . ' ' . userlink($row->getSource()['user']) . '</span>';
+            // snippets
+            echo '<dd class="snippet">';
+            if($row->getSource()['user'] && $show_author) {
+                echo ' <div class="author">' . $this->getLang('author') . ' ' . userlink($row->getSource()['user']) . '</div>';
             }
             if($row->getSource()['modified']) {
                 $lastmod = strtotime($row->getSource()['modified']);
-                echo ' <span class="">' . $lang['lastmod'] . ' ' . dformat($lastmod) . '</span>';
+                echo ' <span class="elastic-datemod">'. dformat($lastmod, '%d %h %Y') . ' — </span>';
             }
-            echo '</dd>';
-
-            // snippets
-            echo '<dd class="snippet">';
             echo $snippet;
             echo '</dd>';
+            echo '</div>';
 
+        }
+        if ($rm_pages) {
+            echo '<span class="elastic-footnote">'. $this->getLang('resultsremoved') .'</span>';
         }
         echo '</dl>';
 

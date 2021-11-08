@@ -10,4 +10,5 @@ $lang['nsp']    = 'Namespaces:';
 $lang['lastmod'] = 'Last modified:';
 $lang['lang']   = 'Language:';
 $lang['author'] = 'Author:';
-$lang['totalfound'] = 'Results found: %s';
+$lang['resultsremoved'] = '*Some results have been removed due to page unavailability.';
+$lang['totalfound'] = 'Results: %s';

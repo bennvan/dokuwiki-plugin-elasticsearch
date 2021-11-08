@@ -21,6 +21,23 @@
         font-size: smaller;
     }
 
+    /* search result */
+    .elastic-result {
+        &:not(:first-of-type) {
+            @media(max-width: 576px) {
+                border-top: 2px solid @ini_background_alt;
+                padding-top: 20px;
+            }
+        }
+        @media(min-width: 576px){
+            padding-left: 50px;
+        }
+    }
+    .elastic-footnote {
+        font-size: small;
+        color: @ini_text_alt;
+    }
+
     form .search-form {
         .advancedOptions {
             li {
