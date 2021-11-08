@@ -94,7 +94,21 @@ class action_plugin_elasticsearch_search extends DokuWiki_Action_Plugin {
         $additions = [];
         Event::createAndTrigger('PLUGIN_ELASTICSEARCH_QUERY', $additions);
         // if query is empty, return all results
-        if (empty(trim($QUERY))) $QUERY = '*';
+        if (empty(trim($QUERY))) {
+            $QUERY = '*';
+        } else {
+            if ($this->getConf('fuzzySearch')) {
+                $words = preg_split('/\s+/', trim($QUERY));
+                $fuzzyMapFn = function($value) {
+                    if (strlen($value) >= 3) {
+                        return $value . "~" . round(strlen($value) / $this->getConf('fuzzySearchDistance'));
+                    } else {
+                        return $value;
+                    }
+                };
+                $QUERY = join(" ", array_map($fuzzyMapFn, $words));
+            }
+        }
 
         // get fields to use in query
         $fields = [];
